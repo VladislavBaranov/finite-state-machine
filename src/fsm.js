@@ -3,41 +3,24 @@ class FSM {
      * Creates new FSM instance.
      * @param config
      */
-    constructor(config) {}
-    
-    config = {
-      initial: 'normal',
-      states: {
-          normal: {
-              transitions: {
-                  study: 'busy',
-              }
-          },
-          busy: {
-              transitions: {
-                  get_tired: 'sleeping',
-                  get_hungry: 'hungry',
-              }
-          },
-          hungry: {
-              transitions: {
-                  eat: 'normal'
-              },
-          },
-          sleeping: {
-              transitions: {
-                  get_hungry: 'hungry',
-                  get_up: 'normal',
-              },
-          },
-      }
-  };
+    constructor(config) {
+        if (!arguments.length)
+            throw Error();
+
+        this.config = config;
+        this.historyStaties = [];
+        this.historyStaties.push({name: config.initial, value: this.config.states[config.initial]});
+        this.currentState = config.initial;
+        this.currentPosition = this.historyStaties.length - 1;
+    }
+
     /**
      * Returns active state.
      * @returns {String}
      */
     getState() {
-      return config.initial;
+        //return this.historyStaties[this.historyStaties.length - 1].name;
+        return this.currentState;
     }
 
     /**
@@ -45,9 +28,15 @@ class FSM {
      * @param state
      */
     changeState(state) {
-      var ind = ['normal','sleeping','hungry','busy'].indexOf(state);
-      if (ind<0) {throw Error;}
-      else config.initial=state;   
+        let find = Object.keys(this.config.states).indexOf(state);
+        if (find < 0)
+            throw  Error();
+
+        this.historyStaties.push({name: state, value: this.config.states[state]});
+        //return this.historyStaties[this.historyStaties.length - 1].name;
+        this.currentState = state;
+        this.currentPosition = this.historyStaties.length;
+        return this.currentState;
     }
 
     /**
@@ -55,26 +44,30 @@ class FSM {
      * @param event
      */
     trigger(event) {
-      function Iterate(config) {
-      for (prop in config) {
-        if (config.hasOwnProperty(prop) && isNaN(prop)) {
-           // проверяем правильность event , если не соответствует выбрасываем исключение
-           // если соответстует  присваем initial значение event
-          if (event!=='study'||event!=='get_tired'||event!=='get_hungry'||event!=='eat'||event!=='get_up'){
-            throw Error;}
-          else if (prop==event) config.initial=event;  
-          }
-          Iterate(config[prop]);
+        let newStateName = null;
+        if (this.historyStaties[this.historyStaties.length - 1].value.transitions.hasOwnProperty(event)) {
+            newStateName = this.historyStaties[this.historyStaties.length - 1].value
+                .transitions[event];
+
+            this.historyStaties.push({
+                name: newStateName,
+                value: this.config.states[newStateName]
+            });
+            this.currentState = this.historyStaties[this.historyStaties.length - 1].name;
+            this.currentPosition = this.historyStaties.length;
         }
-      }
-      
+        else {
+            throw Error();
+        }
     }
 
     /**
      * Resets FSM state to initial.
      */
     reset() {
-      return config.initial='normal';  
+        this.historyStaties.push({name: this.config.initial, value: this.config.states[this.config.initial]});
+        this.currentState = this.config.initial;
+        this.currentPosition = this.historyStaties.length;
     }
 
     /**
@@ -84,18 +77,17 @@ class FSM {
      * @returns {Array}
      */
     getStates(event) {
-      var arr = [];
-      function Iterate(config) {
-        for (prop in config) {
-          if (config.hasOwnProperty(prop) && isNaN(prop)) {
-             // 
-             // 
-            if (event=){
-              
+        if (!arguments.length)
+            return Object.keys(this.config.states);
+
+        let findStates = [];
+        for (let key in this.config.states) {
+            if (this.config.states[key].transitions.hasOwnProperty(event)) {
+                findStates.push(key);
             }
-            Iterate(config[prop]);
-          }
         }
+
+        return findStates;
     }
 
     /**
@@ -103,19 +95,51 @@ class FSM {
      * Returns false if undo is not available.
      * @returns {Boolean}
      */
-    undo() {}
+    undo() {
+        if (this.historyStaties.length === 1) {
+            return false;
+        }
+        else {
+            this.currentPosition--;
+            if (this.currentPosition <= 0) {
+                return false;
+            }
+            this.currentState = this.historyStaties[this.currentPosition - 1].name;
+            return true;
+        }
+    }
 
     /**
      * Goes redo to state.
      * Returns false if redo is not available.
      * @returns {Boolean}
      */
-    redo() {}
+    redo() {
+        if (this.historyStaties.length === 1) {
+            return false;
+        }
+        else {
+            this.currentPosition++;
+            if (this.currentPosition > this.historyStaties.length) {
+                return false;
+            }
+
+
+            this.currentState = this.historyStaties[this.currentPosition - 1].name;
+            return true;
+        }
+    }
 
     /**
      * Clears transition history
      */
-    clearHistory() {}
+    clearHistory() {
+        this.historyStaties = [{name: this.config.initial, value: this.config.states[this.config.initial]}];
+        this.currentState = this.config.initial;
+        this.currentPosition = 1;
+    }
 }
 
 module.exports = FSM;
+
+/** @Created by Uladzimir Halushka **/
